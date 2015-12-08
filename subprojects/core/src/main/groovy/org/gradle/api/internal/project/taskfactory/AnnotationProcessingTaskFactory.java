@@ -67,6 +67,7 @@ public class AnnotationProcessingTaskFactory implements ITaskFactory {
     private final List<? extends PropertyAnnotationHandler> handlers = Arrays.asList(
             new InputFilePropertyAnnotationHandler(),
             new InputDirectoryPropertyAnnotationHandler(),
+            new InputDirectoriesPropertyAnnotationHandler(),
             new InputFilesPropertyAnnotationHandler(),
             new OutputFilePropertyAnnotationHandler(OutputFile.class, filePropertyTransformer),
             new OutputFilePropertyAnnotationHandler(OutputFiles.class, iterableFilePropertyTransformer),

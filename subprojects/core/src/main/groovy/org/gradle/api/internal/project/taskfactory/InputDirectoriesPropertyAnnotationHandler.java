@@ -1,5 +1,5 @@
 /*
- * Copyright 2010 the original author or authors.
+ * Copyright 2015 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,28 +15,30 @@
  */
 package org.gradle.api.internal.project.taskfactory;
 
-import org.gradle.api.file.ConfigurableFileTree;
-import org.gradle.api.tasks.InputDirectory;
+import org.gradle.api.tasks.InputDirectories;
 
 import java.io.File;
 import java.lang.annotation.Annotation;
 import java.util.Collection;
 
-public class InputDirectoryPropertyAnnotationHandler extends BaseInputDirectoryPropertyAnnotationHandler {
-    private final ValidationAction inputDirValidation = new ValidationAction() {
+public class InputDirectoriesPropertyAnnotationHandler extends BaseInputDirectoryPropertyAnnotationHandler {
+    private final ValidationAction inputDirsValidation = new ValidationAction() {
         public void validate(String propertyName, Object value, Collection<String> messages) {
-            File fileValue = (value instanceof ConfigurableFileTree) ? ((ConfigurableFileTree) value).getDir() : (File) value;
-            validateInputDirectory(fileValue, propertyName, messages);
+            Iterable<File> dirs = (Iterable<File>) value;
+            for (File dir : dirs) {
+                validateInputDirectory(dir, propertyName, messages);
+            }
         }
     };
 
     @Override
     public Class<? extends Annotation> getAnnotationType() {
-        return InputDirectory.class;
+        return InputDirectories.class;
     }
 
     @Override
     protected ValidationAction getValidationAction() {
-        return inputDirValidation;
+        return inputDirsValidation;
     }
+
 }
