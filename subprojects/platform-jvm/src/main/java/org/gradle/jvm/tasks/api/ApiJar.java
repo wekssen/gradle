@@ -16,6 +16,7 @@
 
 package org.gradle.jvm.tasks.api;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Maps;
 import org.apache.commons.io.FileUtils;
 import org.gradle.api.DefaultTask;
@@ -26,11 +27,10 @@ import org.gradle.api.tasks.incremental.InputFileDetails;
 import org.gradle.internal.ErroringAction;
 import org.gradle.internal.IoActions;
 import org.gradle.jvm.tasks.api.internal.ApiClassExtractor;
+import org.gradle.jvm.tasks.api.internal.RelativePathProvider;
 
 import java.io.*;
-import java.util.Map;
-import java.util.Set;
-import java.util.SortedMap;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
@@ -67,7 +67,7 @@ import java.util.jar.JarOutputStream;
 public class ApiJar extends DefaultTask {
 
     private Set<String> exportedPackages;
-    private File runtimeClassesDir;
+    private List<File> runtimeClassesDirs;
     private File destinationDir;
     private String archiveName;
     private File apiClassesDir;
@@ -99,14 +99,14 @@ public class ApiJar extends DefaultTask {
         this.apiClassesDir = apiClassesDir;
     }
 
-    @InputDirectory
+    @InputDirectories
     @SkipWhenEmpty
-    public File getRuntimeClassesDir() {
-        return runtimeClassesDir;
+    public List<File> getRuntimeClassesDirs() {
+        return runtimeClassesDirs;
     }
 
-    public void setRuntimeClassesDir(File runtimeClassesDir) {
-        this.runtimeClassesDir = runtimeClassesDir;
+    public void setRuntimeClassesDirs(Collection<File> runtimeClassesDirs) {
+        this.runtimeClassesDirs = ImmutableList.copyOf(runtimeClassesDirs);
     }
 
     @Input
@@ -130,6 +130,7 @@ public class ApiJar extends DefaultTask {
         final ApiClassExtractor apiClassExtractor = new ApiClassExtractor(exportedPackages);
         final AtomicBoolean updated = new AtomicBoolean();
         final Map<File, byte[]> apiClasses = Maps.newHashMap();
+        final RelativePathProvider relativePathProvider = RelativePathProvider.from(runtimeClassesDirs);
         inputs.outOfDate(new ErroringAction<InputFileDetails>() {
             @Override
             protected void doExecute(InputFileDetails inputFileDetails) throws Exception {
@@ -140,7 +141,7 @@ public class ApiJar extends DefaultTask {
                 }
                 final byte[] apiClassBytes = apiClassExtractor.extractApiClassFrom(originalClassFile);
                 apiClasses.put(originalClassFile, apiClassBytes);
-                File apiClassFile = apiClassFileFor(originalClassFile);
+                File apiClassFile = apiClassFileFor(originalClassFile, relativePathProvider);
                 apiClassFile.getParentFile().mkdirs();
                 IoActions.withResource(new FileOutputStream(apiClassFile), new ErroringAction<OutputStream>() {
                     @Override
@@ -154,7 +155,7 @@ public class ApiJar extends DefaultTask {
             @Override
             protected void doExecute(InputFileDetails removedOriginalClassFile) throws Exception {
                 updated.set(true);
-                deleteApiClassFileFor(removedOriginalClassFile.getFile());
+                deleteApiClassFileFor(removedOriginalClassFile.getFile(), relativePathProvider);
             }
         });
         if (updated.get()) {
@@ -216,20 +217,14 @@ public class ApiJar extends DefaultTask {
         }
     }
 
-    private File apiClassFileFor(File originalClassFile) {
-        StringBuilder sb = new StringBuilder(originalClassFile.getName());
-        File cur = originalClassFile.getParentFile();
-        while (!cur.equals(runtimeClassesDir)) {
-            sb.insert(0, cur.getName() + File.separator);
-            cur = cur.getParentFile();
-        }
-        return new File(apiClassesDir, sb.toString());
-    }
-
-    private void deleteApiClassFileFor(File originalClassFile) {
-        File apiClassFile = apiClassFileFor(originalClassFile);
+    private void deleteApiClassFileFor(File originalClassFile, RelativePathProvider relativePathProvider) {
+        File apiClassFile = apiClassFileFor(originalClassFile, relativePathProvider);
         if (apiClassFile.exists()) {
             FileUtils.deleteQuietly(apiClassFile);
         }
+    }
+
+    private File apiClassFileFor(File originalClassFile, RelativePathProvider relativePathProvider) {
+        return new File(apiClassesDir, relativePathProvider.relativePathOf(originalClassFile));
     }
 }

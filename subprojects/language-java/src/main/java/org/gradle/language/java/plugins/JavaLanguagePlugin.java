@@ -56,7 +56,7 @@ import java.util.List;
 import java.util.Map;
 
 import static com.google.common.collect.Iterables.concat;
-import static org.gradle.util.CollectionUtils.single;
+import static org.gradle.util.CollectionUtils.first;
 
 /**
  * Plugin for compiling Java code. Applies the {@link org.gradle.language.base.plugins.ComponentModelBasePlugin} and {@link org.gradle.language.jvm.plugins.JvmResourcesPlugin}. Registers "java"
@@ -120,7 +120,7 @@ public class JavaLanguagePlugin implements Plugin<Project> {
                     assembly.builtBy(compile);
 
                     compile.setDescription(String.format("Compiles %s.", javaSourceSet));
-                    compile.setDestinationDir(single(assembly.getClassDirectories()));
+                    compile.setDestinationDir(first(assembly.getClassDirectories()));
                     compile.setDependencyCacheDir(new File(compile.getProject().getBuildDir(), "jvm-dep-cache"));
                     compile.dependsOn(javaSourceSet);
                     compile.setSource(javaSourceSet.getSource());

@@ -46,7 +46,6 @@ import java.util.Set;
 import static org.apache.commons.lang.StringUtils.capitalize;
 import static org.gradle.model.internal.core.ModelNodes.withType;
 import static org.gradle.model.internal.core.NodePredicate.allLinksTransitive;
-import static org.gradle.util.CollectionUtils.single;
 
 /**
  * Base plugin for JVM component support. Applies the
@@ -180,7 +179,7 @@ public class JvmComponentPlugin implements Plugin<Project> {
                 public void execute(ApiJar jar) {
                     final File apiClassesDir = binary.getNamingScheme().getOutputDirectory(buildDir, "apiClasses");
                     jar.setDescription(String.format("Creates the API binary file for %s.", binary));
-                    jar.setRuntimeClassesDir(single(assembly.getClassDirectories()));
+                    jar.setRuntimeClassesDirs(assembly.getClassDirectories());
                     jar.setExportedPackages(exportedPackages);
                     jar.setApiClassesDir(apiClassesDir);
                     jar.setDestinationDir(apiJar.getFile().getParentFile());
