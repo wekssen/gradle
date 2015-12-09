@@ -16,7 +16,6 @@
 
 package org.gradle.jvm.tasks.api.internal
 
-import org.gradle.test.fixtures.file.TestFile
 import org.gradle.test.fixtures.file.TestNameTestDirectoryProvider
 import org.junit.Rule
 import spock.lang.Specification
@@ -32,15 +31,19 @@ class RelativePathProviderTest extends Specification {
         def subject = RelativePathProvider.from([dir1, dir2])
 
         expect:
-        subject.relativePathOf(file1) == "c/f1"
-        subject.relativePathOf(file2) == "c/f2"
+        subject.relativePathOf(file1) == path("c/f1")
+        subject.relativePathOf(file2) == path("c/f2")
     }
 
-    private TestFile createFile(String path) {
+    def path(String path) {
+        path.replace('/', File.separator)
+    }
+
+    def createFile(String path) {
         tmpDir.createFile(path)
     }
 
-    private TestFile file(String path) {
+    def file(String path) {
         tmpDir.file(path)
     }
 
