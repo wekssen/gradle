@@ -23,17 +23,6 @@ import spock.lang.Unroll
 
 class JUnitStandaloneTestExecutionTest extends AbstractIntegrationSpec {
 
-    def "should apply junit plugin using explicit class reference"() {
-        given:
-        applyJUnitPlugin()
-
-        when:
-        run 'tasks'
-
-        then:
-        noExceptionThrown()
-    }
-
     def "creates a JUnit test suite binary"() {
         given:
         applyJUnitPlugin()
