@@ -33,12 +33,14 @@ import org.gradle.jvm.test.internal.DefaultJUnitTestSuiteBinarySpec;
 import org.gradle.jvm.test.internal.DefaultJUnitTestSuiteSpec;
 import org.gradle.language.base.DependentSourceSet;
 import org.gradle.language.base.LanguageSourceSet;
+import org.gradle.language.base.plugins.TestingModelBasePlugin;
 import org.gradle.language.java.JavaSourceSet;
 import org.gradle.language.java.tasks.PlatformJavaCompile;
 import org.gradle.language.jvm.JvmResourceSet;
 import org.gradle.model.*;
 import org.gradle.platform.base.*;
 import org.gradle.platform.base.internal.*;
+import org.gradle.platform.base.test.TestSuiteContainer;
 
 import java.io.File;
 import java.util.Collections;
@@ -51,7 +53,15 @@ import java.util.Set;
  * @since 2.11
  */
 @Incubating
-public class JUnitTestSuitePlugin extends RuleSource {
+public class JUnitTestSuitePlugin implements Plugin<Project> {
+
+    @Override
+    public void apply(Project project) {
+        project.getPluginManager().apply(TestingModelBasePlugin.class);
+    }
+
+    @SuppressWarnings("UnusedDeclaration")
+    static class Rules extends RuleSource {
 
         @ComponentType
         public void register(ComponentTypeBuilder<JUnitTestSuiteSpec> builder) {
@@ -66,12 +76,24 @@ public class JUnitTestSuitePlugin extends RuleSource {
             builder.internalView(JvmBinarySpecInternal.class);
         }
 
+//        @Mutate
+//        public void createTestSuiteTasks(final ModelMap<Task> tasks,
+//                                    TestSuiteContainer testSuites,
+//                                    final FileOperations fileOperations,
+//                                    final @Path("buildDir") File buildDir) {
+//            for (JUnitTestSuiteSpec testSuite : testSuites.withType(JUnitTestSuiteSpec.class)) {
+//                for (JUnitTestSuiteBinarySpec binary : testSuite.getBinaries().withType(JUnitTestSuiteBinarySpec.class)) {
+//                    createTestSuiteTask(tasks, binary, fileOperations, buildDir);
+//                }
+//            }
+//        }
+
         @BinaryTasks
         void createTestSuiteTask(final ModelMap<Task> tasks,
                                  final JUnitTestSuiteBinarySpec binary,
                                  final FileOperations fileOperations,
                                  final @Path("buildDir") File buildDir) {
-            String taskName = ((BinarySpecInternal)binary).getProjectScopedName() + "Test";
+            String taskName = ((BinarySpecInternal) binary).getProjectScopedName() + "Test";
             final JvmAssembly jvmAssembly = ((WithJvmAssembly) binary).getAssembly();
 
             tasks.create(taskName, Test.class, new Action<Test>() {
@@ -107,30 +129,34 @@ public class JUnitTestSuitePlugin extends RuleSource {
             testTasks.all(new Action<Test>() {
                 @Override
                 public void execute(Test test) {
-                    UnionFileCollection testClasspath = new UnionFileCollection(test.getClasspath());
-                    Set<? extends Task> tasks = test.getTaskDependencies().getDependencies(test);
-                    for (Task task : tasks) {
-                        if (task instanceof PlatformJavaCompile) {
-                            FileCollection cp = ((PlatformJavaCompile) task).getClasspath();
-                            if (cp != null) {
-                                testClasspath.add(cp);
-                            }
-                        }
-                    }
-
-                    test.setClasspath(testClasspath);
+                    test.setClasspath(classpathFor(test));
                 }
             });
         }
 
+        @Mutate
+        void createJUnitTestSuiteBinaries(TestSuiteContainer testSuites, final PlatformResolvers platformResolvers) {
+            testSuites.afterEach(JUnitTestSuiteSpec.class, new Action<JUnitTestSuiteSpec>() {
+                @Override
+                public void execute(JUnitTestSuiteSpec jUnitTestSuiteSpec) {
+                    createJUnitBinaries(jUnitTestSuiteSpec.getBinaries(), platformResolvers, jUnitTestSuiteSpec);
+                }
+            });
+        }
+
+        // TODO:RBO just to preserve behavior in the meantime
         @ComponentBinaries
-        void createJUnitBinaries(final ModelMap<JUnitTestSuiteBinarySpec> testBinaries, final PlatformResolvers platformResolver, final JUnitTestSuiteSpec testSuite) {
+        void createJUnitBinaries(final ModelMap<BinarySpec> testBinaries, final PlatformResolvers platformResolver, final JUnitTestSuiteSpec testSuite) {
             final List<JavaPlatform> javaPlatforms = resolvePlatforms(platformResolver);
             final JavaPlatform platform = javaPlatforms.get(0);
             final BinaryNamingScheme namingScheme = namingSchemeFor(testSuite, javaPlatforms, platform);
             testBinaries.create(namingScheme.getBinaryName(), JUnitTestSuiteBinarySpec.class, new Action<JUnitTestSuiteBinarySpec>() {
+
                 @Override
                 public void execute(JUnitTestSuiteBinarySpec jUnitTestSuiteBinarySpec) {
+                    // TODO:RBO just to prove it works
+                    ((BinarySpecInternal)jUnitTestSuiteBinarySpec).setBuildable(false);
+
                     final String jUnitVersion = testSuite.getJUnitVersion();
                     ((BinarySpecInternal) jUnitTestSuiteBinarySpec).setNamingScheme(namingScheme);
                     jUnitTestSuiteBinarySpec.setJUnitVersion(jUnitVersion);
@@ -150,8 +176,18 @@ public class JUnitTestSuitePlugin extends RuleSource {
             });
         }
 
+        // TODO:RBO just to preserve behavior in the meantime
         @Defaults
-        void addDefaultSourceSets(ModelMap<JUnitTestSuiteSpec> suites) {
+        void addDefaultSourceSetsToTestSuiteComponents(@Path("components") ModelMap<JUnitTestSuiteSpec> components) {
+            addDefaultSourceSetsTo(components);
+        }
+
+        @Defaults
+        void addDefaultSourceSetsToTestSuites(@Path("testSuites") ModelMap<JUnitTestSuiteSpec> testSuites) {
+            addDefaultSourceSetsTo(testSuites);
+        }
+
+        private void addDefaultSourceSetsTo(ModelMap<JUnitTestSuiteSpec> suites) {
             suites.all(new Action<JUnitTestSuiteSpec>() {
                 @Override
                 public void execute(final JUnitTestSuiteSpec jUnitTestSuiteSpec) {
@@ -171,8 +207,18 @@ public class JUnitTestSuitePlugin extends RuleSource {
             });
         }
 
+        // TODO:RBO just to preserve behavior in the meantime
         @Validate
-        void validateJUnitTestSuites(ModelMap<JUnitTestSuiteSpec> suites) {
+        void validateJUnitTestSuiteComponents(@Path("components") ModelMap<JUnitTestSuiteSpec> components) {
+           validateJUnitTestSuitesTo(components.withType(JUnitTestSuiteSpec.class));
+        }
+
+        @Validate
+        void validateJUnitTestSuites(@Path("testSuites") ModelMap<JUnitTestSuiteSpec> testSuites) {
+            validateJUnitTestSuitesTo(testSuites);
+        }
+
+        private void validateJUnitTestSuitesTo(ModelMap<JUnitTestSuiteSpec> suites) {
             suites.all(new Action<JUnitTestSuiteSpec>() {
                 @Override
                 public void execute(JUnitTestSuiteSpec jUnitTestSuiteSpec) {
@@ -196,5 +242,18 @@ public class JUnitTestSuitePlugin extends RuleSource {
                 .withVariantDimension(platform, selectedPlatforms);
         }
 
-
+        private FileCollection classpathFor(Test test) {
+            UnionFileCollection testClasspath = new UnionFileCollection(test.getClasspath());
+            Set<? extends Task> tasks = test.getTaskDependencies().getDependencies(test);
+            for (Task task : tasks) {
+                if (task instanceof PlatformJavaCompile) {
+                    FileCollection cp = ((PlatformJavaCompile) task).getClasspath();
+                    if (cp != null) {
+                        testClasspath.add(cp);
+                    }
+                }
+            }
+            return testClasspath;
+        }
+   }
 }
