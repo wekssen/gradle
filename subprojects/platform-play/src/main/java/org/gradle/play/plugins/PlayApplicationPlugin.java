@@ -55,6 +55,7 @@ import java.util.Date;
 
 import static org.gradle.model.internal.core.ModelNodes.withType;
 import static org.gradle.model.internal.core.NodePredicate.allLinksTransitive;
+import static org.gradle.util.CollectionUtils.toSet;
 
 /**
  * Plugin for Play Framework component support. Registers the {@link org.gradle.play.PlayApplicationSpec} component type for the components container.
@@ -137,7 +138,7 @@ public class PlayApplicationPlugin implements Plugin<Project> {
         void failOnMultipleTargetPlatforms(ModelMap<PlayApplicationSpec> playApplications) {
             playApplications.withType(PlayPlatformAwareComponentSpecInternal.class).afterEach(new Action<PlayPlatformAwareComponentSpecInternal>() {
                 public void execute(PlayPlatformAwareComponentSpecInternal playApplication) {
-                    if (playApplication.getTargetPlatforms().size() > 1) {
+                    if (toSet(playApplication.getTargetPlatforms()).size() > 1) {
                         throw new GradleException("Multiple target platforms for 'PlayApplicationSpec' is not (yet) supported.");
                     }
                 }

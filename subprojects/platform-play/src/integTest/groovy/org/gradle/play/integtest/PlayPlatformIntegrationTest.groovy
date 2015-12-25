@@ -59,7 +59,7 @@ model {
 
         then:
         file("build/stage/playBinary/lib").assertContainsDescendants(
-                "com.typesafe.play-play_${scalaPlatform}-${playVersion}.jar"
+            "com.typesafe.play-play_${scalaPlatform}-${playVersion}.jar"
         )
 
         where:
@@ -75,6 +75,29 @@ model {
         "play: '2.3.8', scala: '2.10'" | '2.3.8' | '2.10'
         "play: '2.3.8', scala: '2.11'" | '2.3.8' | '2.11'
 
+    }
+
+    def "can build play app binary given multiple identical platforms [#platform]"() {
+        when:
+        def playVersion = '2.3.9'
+        def scalaVersion = '2.11'
+        buildFile << """
+model {
+    components {
+        play {
+            platform play: '${playVersion}', scala: '${scalaVersion}'
+            platform play: '${playVersion}', scala: '${scalaVersion}'
+        }
+    }
+}
+"""
+
+        succeeds("stage")
+
+        then:
+        file("build/stage/playBinary/lib").assertContainsDescendants(
+            "com.typesafe.play-play_${scalaVersion}-${playVersion}.jar"
+        )
     }
 
     @Requires(TestPrecondition.JDK8_OR_LATER)

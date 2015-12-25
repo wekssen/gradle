@@ -60,4 +60,32 @@ public class PlayPlatformRequirement implements PlatformRequirement {
         }
         return builder.toString();
     }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null || getClass() != obj.getClass()) {
+            return false;
+        }
+
+        PlayPlatformRequirement that = (PlayPlatformRequirement) obj;
+
+        if (playVersion != null ? !playVersion.equals(that.playVersion) : that.playVersion != null) {
+            return false;
+        } else if (scalaVersion != null ? !scalaVersion.equals(that.scalaVersion) : that.scalaVersion != null) {
+            return false;
+        }
+        return javaVersion != null ? javaVersion.equals(that.javaVersion) : that.javaVersion == null;
+
+    }
+
+    @Override
+    public int hashCode() {
+        int result = playVersion != null ? playVersion.hashCode() : 0;
+        result = 31 * result + (scalaVersion != null ? scalaVersion.hashCode() : 0);
+        result = 31 * result + (javaVersion != null ? javaVersion.hashCode() : 0);
+        return result;
+    }
 }
